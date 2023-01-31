@@ -16,7 +16,10 @@ namespace ClashCodes
 
         public void Add(Material material)
         {
-            var line = $"{material.Id},{material.Description}{Environment.NewLine}";
+            string description = material.Description.Contains(',')
+                ? "\"" + material.Description + "\""
+                : material.Description;
+            var line = $"{material.Id},{description}{Environment.NewLine}";
             File.AppendAllText(filename, line);
         }
     }

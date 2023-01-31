@@ -2,11 +2,18 @@ namespace ClashCodes
 {
     public class MaterialReadRepository
     {
+        private readonly string filename;
+
+        public MaterialReadRepository(string filename)
+        {
+            this.filename = filename;
+        }
+
         public List<Material> List()
         {
             var materials = new List<Material>();
 
-            var lines = File.ReadAllLines("Materials.csv");
+            var lines = File.ReadAllLines(filename);
 
             for (int index = 1; index < lines.Length; index++)
             {

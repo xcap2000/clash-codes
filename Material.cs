@@ -1,5 +1,8 @@
+using System.Diagnostics;
+
 namespace ClashCodes
 {
+    [DebuggerDisplay("ID = {Id}, Description = {Description}")]
     public class Material
     {
         public Material(string id, string description)
