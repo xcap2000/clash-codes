@@ -1,29 +1,40 @@
-﻿using Fastenshtein;
+﻿using System.Threading.Tasks.Dataflow;
+using Fastenshtein;
 
 namespace ClashCodes
 {
     public static class Program
     {
-        public static void Main()
+        private static int idsCount = 0;
+
+        public static async Task Main()
+        {
+            var dataflowBlockOptions = new DataflowBlockOptions
+            {
+                EnsureOrdered = true,
+                BoundedCapacity = 5
+            };
+
+            var dataBuffer = new BufferBlock<List<Material>>(dataflowBlockOptions);
+            var consumerTask = ConsumeAsync(dataBuffer);
+
+            Produce(dataBuffer);
+
+            await consumerTask;
+        }
+
+        public static void Produce(ITargetBlock<List<Material>> target)
         {
             var readRepository = new MaterialReadRepository("Materials.csv");
-            var clashWriteRepository = new MaterialWriteRepository("Materials-Clash.csv");
-            var nonClashWriteRepository = new MaterialWriteRepository("Materials-Non-Clash.csv");
 
             var materials = readRepository.List();
-
-            // [x] TODO - Get codes distinctly
-            // [X] TODO - For each code get all material ocurrences
-            // [X] TODO - Compare records to one another
-            // [X] TODO - If one of them is not compatible with the levenshtein one third/33% add to clash group
-            // [X] TODO - Otherwise add to non-clash
 
             var ids = materials
                 .Select(m => m.Id)
                 .Distinct()
                 .ToList();
 
-            var previousPercentage = 0.00M;
+            idsCount = ids.Count;
 
             for (int index = 0; index < ids.Count; index++)
             {
@@ -32,6 +43,25 @@ namespace ClashCodes
                 var narrowedMaterials = materials
                     .Where(m => m.Id == id)
                     .ToList();
+
+                target.Post(narrowedMaterials);
+            }
+
+            target.Complete();
+        }
+
+        public static async Task ConsumeAsync(ISourceBlock<List<Material>> source)
+        {
+            var previousPercentage = 0.00M;
+
+            var index = 0;
+
+            var clashWriteRepository = new MaterialWriteRepository("Materials-Clash.csv");
+            var nonClashWriteRepository = new MaterialWriteRepository("Materials-Non-Clash.csv");
+
+            while (await source.OutputAvailableAsync())
+            {
+                List<Material> narrowedMaterials = await source.ReceiveAsync();
 
                 var countById = narrowedMaterials.Count;
 
@@ -46,7 +76,7 @@ namespace ClashCodes
                         if
                         (
                             Levenshtein.Distance(sample.Description, material.Description) >
-                            Math.Max(sample.Description.Length, material.Description.Length) / 3 * 2
+                            Math.Max(sample.Description.Length, material.Description.Length) / 10 * 9
                         )
                         {
                             hasClashes = true;
@@ -67,7 +97,7 @@ namespace ClashCodes
                     }
                 }
 
-                var percentage = decimal.Round(index / (decimal)ids.Count * 100M, 1);
+                var percentage = decimal.Round(++index / (decimal)idsCount * 100M, 1);
 
                 if (percentage != previousPercentage)
                 {
