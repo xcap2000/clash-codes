@@ -16,26 +16,37 @@ namespace ClashCodes
 
         public void Add(List<Material> materials)
         {
-            for (int index = 1; index < materials.Count; index++)
+            if (materials.Count != 1)
             {
-                if (index == 1)
+                for (int index = 1; index < materials.Count; index++)
                 {
-                    var firstMaterial = materials[0];
-                    var secondMaterial = materials[index];
-                    var firstDescription = FormatDescription(firstMaterial);
-                    var secondDescription = FormatDescription(secondMaterial);
+                    if (index == 1)
+                    {
+                        var firstMaterial = materials[0];
+                        var secondMaterial = materials[index];
+                        var firstDescription = FormatDescription(firstMaterial);
+                        var secondDescription = FormatDescription(secondMaterial);
 
-                    var line = $"{firstMaterial.Id},{firstDescription},{secondMaterial.Id},{secondDescription}{Environment.NewLine}";
-                    File.AppendAllText(filename, line);
-                }
-                else
-                {
-                    var currentMaterial = materials[index];
-                    var currentDescription = FormatDescription(currentMaterial);
+                        var line = $"{firstMaterial.Id},{firstDescription},{secondMaterial.Id},{secondDescription}{Environment.NewLine}";
+                        File.AppendAllText(filename, line);
+                    }
+                    else
+                    {
+                        var currentMaterial = materials[index];
+                        var currentDescription = FormatDescription(currentMaterial);
 
-                    var line = $",,{currentMaterial.Id},{currentDescription}{Environment.NewLine}";
-                    File.AppendAllText(filename, line);
+                        var line = $",,{currentMaterial.Id},{currentDescription}{Environment.NewLine}";
+                        File.AppendAllText(filename, line);
+                    }
                 }
+            }
+            else
+            {
+                var currentMaterial = materials[0];
+                var currentDescription = FormatDescription(currentMaterial);
+
+                var line = $"{currentMaterial.Id},{currentDescription},,{Environment.NewLine}";
+                File.AppendAllText(filename, line);
             }
         }
 
