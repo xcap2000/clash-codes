@@ -21,6 +21,27 @@ namespace ClashCodes
             Produce(dataBuffer);
 
             await consumerTask;
+
+            // var readRepository = new MaterialReadRepository("Materials.csv");
+            // var writeRepository = new AlignedMaterialWriteRepository("Materials-New-Layout.csv");
+
+            // var materials = readRepository.List();
+
+            // var ids = materials
+            //     .Select(m => m.Id)
+            //     .Distinct()
+            //     .ToList();
+
+            // foreach (var id in ids)
+            // {
+            //     var narrowedMaterials = materials
+            //         .Where(m => m.Id == id)
+            //         .ToList();
+
+            //     writeRepository.Add(narrowedMaterials);
+            // }
+
+            // await Task.Delay(0);
         }
 
         public static void Produce(ITargetBlock<List<Material>> target)
@@ -52,9 +73,9 @@ namespace ClashCodes
 
         public static async Task ConsumeAsync(ISourceBlock<List<Material>> source)
         {
-            var previousPercentage = 0.00M;
-
             var index = 0;
+
+            var previousPercentage = 0.00M;
 
             var clashWriteRepository = new MaterialWriteRepository("Materials-Clash.csv");
             var nonClashWriteRepository = new MaterialWriteRepository("Materials-Non-Clash.csv");
@@ -73,10 +94,17 @@ namespace ClashCodes
 
                     foreach (var material in narrowedMaterials.Skip(1))
                     {
+                        // 99%
+                        // if
+                        // (
+                        //     Levenshtein.Distance(sample.Description, material.Description) >
+                        //     Math.Max(sample.Description.Length, material.Description.Length) / 10 * 9
+                        // )
+                        // 100%
                         if
                         (
-                            Levenshtein.Distance(sample.Description, material.Description) >
-                            Math.Max(sample.Description.Length, material.Description.Length) / 10 * 9
+                            Levenshtein.Distance(sample.Description, material.Description) ==
+                            Math.Max(sample.Description.Length, material.Description.Length)
                         )
                         {
                             hasClashes = true;
