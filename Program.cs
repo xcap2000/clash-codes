@@ -94,18 +94,30 @@ namespace ClashCodes
 
                     foreach (var material in narrowedMaterials.Skip(1))
                     {
-                        // 99%
+                        // 67%
+                        if
+                        (
+                            Levenshtein.Distance(sample.Description, material.Description) >
+                            Math.Max(sample.Description.Length, material.Description.Length) / 3 * 2
+                        )
+                        // 80%
+                        // if
+                        // (
+                        //     Levenshtein.Distance(sample.Description, material.Description) >
+                        //     Math.Max(sample.Description.Length, material.Description.Length) / 5 * 4
+                        // )
+                        // 90%
                         // if
                         // (
                         //     Levenshtein.Distance(sample.Description, material.Description) >
                         //     Math.Max(sample.Description.Length, material.Description.Length) / 10 * 9
                         // )
                         // 100%
-                        if
-                        (
-                            Levenshtein.Distance(sample.Description, material.Description) ==
-                            Math.Max(sample.Description.Length, material.Description.Length)
-                        )
+                        // if
+                        // (
+                        //     Levenshtein.Distance(sample.Description, material.Description) ==
+                        //     Math.Max(sample.Description.Length, material.Description.Length)
+                        // )
                         {
                             hasClashes = true;
                         }
