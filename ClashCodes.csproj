@@ -12,4 +12,10 @@
     <PackageReference Include="Fastenshtein" Version="1.0.0.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Materials.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
