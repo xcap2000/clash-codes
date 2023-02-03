@@ -1,150 +1,144 @@
 ﻿using System.Threading.Tasks.Dataflow;
-using Fastenshtein;
 
-namespace ClashCodes
+namespace ClashCodes;
+
+public static class Program
 {
-    public static class Program
+    private static int materialCount = 0;
+    private static volatile int processed = 0;
+
+    public static async Task Main()
     {
-        private static int idsCount = 0;
-
-        public static async Task Main()
+        var dataflowBlockOptions = new DataflowBlockOptions
         {
-            var dataflowBlockOptions = new DataflowBlockOptions
-            {
-                EnsureOrdered = true,
-                BoundedCapacity = 5
-            };
+            EnsureOrdered = true,
+            BoundedCapacity = 10
+        };
 
-            var dataBuffer = new BufferBlock<List<Material>>(dataflowBlockOptions);
-            var consumerTask = ConsumeAsync(dataBuffer);
+        var dataBuffer = new BufferBlock<List<Material>>(dataflowBlockOptions);
+        var consumerTask = ConsumeAsync(dataBuffer);
 
-            Produce(dataBuffer);
+        await Produce(dataBuffer);
 
-            await consumerTask;
+        await consumerTask;
+    }
 
-            // var readRepository = new MaterialReadRepository("Materials.csv");
-            // var writeRepository = new AlignedMaterialWriteRepository("Materials-New-Layout.csv");
+    public static async Task Produce(ITargetBlock<List<Material>> target)
+    {
+        var readRepository = new MaterialReadRepository("Materials.csv");
 
-            // var materials = readRepository.List();
+        var materials = readRepository.List();
 
-            // var ids = materials
-            //     .Select(m => m.Id)
-            //     .Distinct()
-            //     .ToList();
+        materialCount = materials.Count;
 
-            // foreach (var id in ids)
-            // {
-            //     var narrowedMaterials = materials
-            //         .Where(m => m.Id == id)
-            //         .ToList();
-
-            //     writeRepository.Add(narrowedMaterials);
-            // }
-
-            // await Task.Delay(0);
-        }
-
-        public static void Produce(ITargetBlock<List<Material>> target)
+        while (true)
         {
-            var readRepository = new MaterialReadRepository("Materials.csv");
-
-            var materials = readRepository.List();
-
-            var ids = materials
-                .Select(m => m.Id)
-                .Distinct()
-                .ToList();
-
-            idsCount = ids.Count;
-
-            for (int index = 0; index < ids.Count; index++)
+            if (materials.Count == 0)
             {
-                var id = ids[index];
-
-                var narrowedMaterials = materials
-                    .Where(m => m.Id == id)
-                    .ToList();
-
-                target.Post(narrowedMaterials);
+                break;
             }
 
-            target.Complete();
+            List<Material> narrowedMaterials = GetMaterials(materials);
+
+            if (narrowedMaterials.Count > 1)
+            {
+                await target.SendAsync(narrowedMaterials);
+            }
+
+            materials.RemoveRange(0, narrowedMaterials.Count);
         }
 
-        public static async Task ConsumeAsync(ISourceBlock<List<Material>> source)
+        target.Complete();
+    }
+
+    private static List<Material> GetMaterials(List<Material> materials)
+    {
+
+        var firstMaterial = materials[0];
+        firstMaterial.CalculateUpper();
+
+        var narrowedMaterials = new List<Material>
         {
-            var index = 0;
+            firstMaterial
+        };
 
-            var previousPercentage = 0.00M;
+        for (int index = 1; index < materials.Count; index++)
+        {
+            var currentMaterial = materials[index];
 
-            var clashWriteRepository = new MaterialWriteRepository("Materials-Clash.csv");
-            var nonClashWriteRepository = new MaterialWriteRepository("Materials-Non-Clash.csv");
-
-            while (await source.OutputAvailableAsync())
+            if (currentMaterial.Id == firstMaterial.Id)
             {
-                List<Material> narrowedMaterials = await source.ReceiveAsync();
+                currentMaterial.CalculateUpper();
+                narrowedMaterials.Add(currentMaterial);
+            }
+            else
+            {
+                break;
+            }
+        }
 
-                var countById = narrowedMaterials.Count;
+        return narrowedMaterials;
+    }
 
-                if (countById > 1)
+    public static async Task ConsumeAsync(ISourceBlock<List<Material>> source)
+    {
+        var previousPercentage = 0.00M;
+
+        var materialWriteRepository = new MaterialWriteRepository("Materials-Clash-Groups.csv");
+
+        while (await source.OutputAvailableAsync())
+        {
+            List<Material> narrowedMaterials = await source.ReceiveAsync();
+
+            var levenshteinRanges = new List<LevenshteinRange>
+            {
+                new LevenshteinRange(100),
+                new LevenshteinRange(80),
+                new LevenshteinRange(60),
+                new LevenshteinRange(40),
+                new LevenshteinRange(20),
+                new LevenshteinRange(0),
+            };
+
+            var greatestRange = 0;
+
+            for (int index = 1; index < narrowedMaterials.Count; index++)
+            {
+                foreach (var levenshteinRange in levenshteinRanges)
                 {
-                    var sample = narrowedMaterials.First();
-
-                    var hasClashes = false;
-
-                    foreach (var material in narrowedMaterials.Skip(1))
-                    {
-                        // 67%
-                        if
+                    if
+                    (
+                        levenshteinRange.Falls
                         (
-                            Levenshtein.Distance(sample.Description, material.Description) >
-                            Math.Max(sample.Description.Length, material.Description.Length) / 3 * 2
+                            narrowedMaterials[0].DescriptionUpper,
+                            narrowedMaterials[index].DescriptionUpper
                         )
-                        // 80%
-                        // if
-                        // (
-                        //     Levenshtein.Distance(sample.Description, material.Description) >
-                        //     Math.Max(sample.Description.Length, material.Description.Length) / 5 * 4
-                        // )
-                        // 90%
-                        // if
-                        // (
-                        //     Levenshtein.Distance(sample.Description, material.Description) >
-                        //     Math.Max(sample.Description.Length, material.Description.Length) / 10 * 9
-                        // )
-                        // 100%
-                        // if
-                        // (
-                        //     Levenshtein.Distance(sample.Description, material.Description) ==
-                        //     Math.Max(sample.Description.Length, material.Description.Length)
-                        // )
+                    )
+                    {
+                        if (levenshteinRange.DiscrepancyPercentage > greatestRange)
                         {
-                            hasClashes = true;
-                        }
-                        else
-                        {
-                            continue;
+                            greatestRange = levenshteinRange.DiscrepancyPercentage;
                         }
                     }
-
-                    if (hasClashes)
-                    {
-                        narrowedMaterials.ForEach(clashWriteRepository.Add);
-                    }
-                    else
-                    {
-                        narrowedMaterials.ForEach(nonClashWriteRepository.Add);
-                    }
                 }
+            }
 
-                var percentage = decimal.Round(++index / (decimal)idsCount * 100M, 1);
+            foreach (var material in narrowedMaterials)
+            {
+                material.Range = greatestRange;
+                materialWriteRepository.Add(material);
+            }
 
-                if (percentage != previousPercentage)
-                {
-                    previousPercentage = percentage;
-                    Console.Clear();
-                    Console.WriteLine($"Progress: {percentage}");
-                }
+            processed += narrowedMaterials.Count;
+
+            var percentage = decimal.Round(processed / (decimal)materialCount * 100M, 1, MidpointRounding.ToZero);
+
+            if (percentage > previousPercentage)
+            {
+                previousPercentage = percentage;
+                Console.Clear();
+                Console.WriteLine($"Progress: {percentage}%");
+                Console.WriteLine($"{processed:###,###,###} records processed of {materialCount:###,###,###}");
             }
         }
     }
