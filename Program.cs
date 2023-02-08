@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks.Dataflow;
+﻿using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace ClashCodes;
 
@@ -9,6 +10,7 @@ public static class Program
 
     public static async Task Main()
     {
+        var stopwatch = Stopwatch.StartNew();
         var dataflowBlockOptions = new DataflowBlockOptions
         {
             EnsureOrdered = true,
@@ -21,6 +23,9 @@ public static class Program
         await Produce(dataBuffer);
 
         await consumerTask;
+
+        stopwatch.Stop();
+        Console.WriteLine("Total: " + stopwatch.Elapsed);
     }
 
     public static async Task Produce(ITargetBlock<List<Material>> target)
