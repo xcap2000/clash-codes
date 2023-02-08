@@ -10,5 +10,5 @@ AWS Machine:
 Local machine:
 00:07:17.5078822
 
-10 year old machine;
+10 year old machine:
 00:03:47.2196310
